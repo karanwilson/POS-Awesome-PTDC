@@ -8,7 +8,7 @@ with open("requirements.txt") as f:
 from posawesome import __version__ as version
 
 setup(
-    name="posawesome_v14",
+    name="posawesome",
     version=version,
     description="POS Awesome v14",
     author="Yousef Restom",
