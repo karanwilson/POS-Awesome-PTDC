@@ -2,10 +2,10 @@
 from __future__ import unicode_literals
 from . import __version__ as app_version
 
-app_name = "posawesome_v14"
-app_title = "POS Awesome v14"
+app_name = "posawesome"
+app_title = "POS Awesome"
 app_publisher = "Youssef Restom"
-app_description = "POS Awesome v14"
+app_description = "POS Awesome"
 app_icon = "octicon octicon-file-directory"
 app_color = "grey"
 app_email = "youssef@totrox.com"

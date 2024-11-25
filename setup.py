@@ -10,7 +10,7 @@ from posawesome import __version__ as version
 setup(
     name="posawesome",
     version=version,
-    description="POS Awesome v14",
+    description="POS Awesome",
     author="Yousef Restom",
     author_email="youssef@totrox.com",
     packages=find_packages(),
