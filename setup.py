@@ -8,9 +8,9 @@ with open("requirements.txt") as f:
 from posawesome import __version__ as version
 
 setup(
-    name="posawesome",
+    name="posawesome_v14",
     version=version,
-    description="POS Awesome",
+    description="POS Awesome v14",
     author="Yousef Restom",
     author_email="youssef@totrox.com",
     packages=find_packages(),
