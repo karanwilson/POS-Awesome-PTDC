@@ -871,7 +871,7 @@
         </v-col>
         <v-col cols="7">
           <v-row no-gutters class="pa-1 pt-2 pl-0">
-            <v-col cols="4" class="pa-1">
+            <v-col cols="6" class="pa-1">
               <v-btn
                 block
                 class="pa-0"
@@ -895,7 +895,7 @@
                 >{{ __("Select S.O") }}</v-btn
               >
             </v-col>
-            <v-col cols="4" class="pa-1">
+            <!-- <v-col cols="4" class="pa-1">
               <v-btn
                 block
                 class="pa-0"
@@ -904,8 +904,8 @@
                 @click="open_offlineBill_drafts"
                 >{{ __("Offline FS Bills") }}</v-btn
               >
-            </v-col>
-            <v-col cols="4" class="pa-1">
+            </v-col> -->
+            <v-col cols="6" class="pa-1">
               <v-btn
                 block
                 class="pa-0"
@@ -917,7 +917,7 @@
               >
             </v-col>
             <!--putting the v-if statement below to avoid cancel of submitted invoices pulled via open_pending_fs_bills()-->
-            <v-col cols="4" class="pa-1" v-if="this.invoice_doc.docstatus != 1">
+            <v-col cols="6" class="pa-1" v-if="this.invoice_doc.docstatus != 1">
               <v-btn
                 block
                 class="pa-0"
@@ -927,7 +927,7 @@
                 >{{ __("Cancel") }}</v-btn
               >
             </v-col>
-            <v-col cols="4" class="pa-1">
+            <v-col cols="6" class="pa-1">
               <v-btn
                 block
                 class="pa-0"
@@ -935,20 +935,6 @@
                 dark
                 @click="new_invoice"
                 >{{ __("Hold Bill") }}</v-btn
-              >
-            </v-col>
-            <v-col
-              v-if="pos_profile.posa_allow_print_draft_invoices"
-              cols="4"
-              class="pa-1"
-            >
-              <v-btn
-                block
-                class="pa-0"
-                color="primary"
-                @click="print_draft_invoice"
-                dark
-                >{{ __("Print Draft") }}</v-btn
               >
             </v-col>
             <v-col class="pa-1">
@@ -963,6 +949,20 @@
               >
             </v-col>
             <v-col
+              v-if="pos_profile.posa_allow_print_draft_invoices"
+              cols="6"
+              class="pa-1"
+            >
+              <v-btn
+                block
+                class="pa-0"
+                color="primary"
+                @click="print_draft_invoice"
+                dark
+                >{{ __("Print Draft") }}</v-btn
+              >
+            </v-col>
+            <!-- <v-col
               cols="6"
               class="pa-1"
             >
@@ -974,7 +974,7 @@
                 dark
                 >{{ __("Offline FS PAY") }}</v-btn
               >
-            </v-col>
+            </v-col> -->
           </v-row>
         </v-col>
       </v-row>
@@ -1293,19 +1293,29 @@ export default {
           text: 'FS Offline',
           color: 'warning',
         });
-        this.reset_fs_variables();
+        this.reset_fs_variables(this.fs_offline);
       }
       else {
         evntBus.$emit('show_mesage', {
           text: 'FS Online',
           color: 'success',
         });
+        this.reset_fs_variables(this.fs_offline);
       }
+      evntBus.$emit('fs_offline', this.fs_offline);
     },
-    reset_fs_variables() {
+    reset_fs_variables(fs_offline = false) {
       this.balance_available = null;
       console.log("Balance: ", this.balance_available);
-      this.reset_fs_balance_status();
+      if (fs_offline) {
+        console.log("fs_offline: ", fs_offline);
+        this.dynamic_fs_balance_color = 'warning';
+        this.dynamic_fs_balance_icon = 'mdi-bank-off';
+      }
+      else {
+        console.log("fs_offline: ", fs_offline);
+        this.reset_fs_balance_status();
+      }
       this.reset_pending_fs_bills_status();
     },
     fs_balance_check(fs_acc_customer) {
@@ -2228,7 +2238,7 @@ export default {
           }
           this.items.forEach((item) => {
             const return_item = this.return_doc.items.find(
-              (element) => element.item_code == item.item_code
+              (element) => element.item_code == item.item_code //&& Math.abs(element.qty) == Math.abs(item.qty)
             );
 
             if (!return_item) {
@@ -2651,26 +2661,53 @@ export default {
       // 2. if batch has no expiry_date we should use the batch with the earliest manufacturing_date
       // 3. we should not use batch with remaining_qty = 0
       // 4. we should the highest remaining_qty
-      const batch_no_data = Object.values(used_batches)
-        .filter((batch) => batch.remaining_qty > 0)
-        .sort((a, b) => {
-          if (a.expiry_date && b.expiry_date) {
-            return a.expiry_date - b.expiry_date;
-          } else if (a.expiry_date) {
-            return -1;
-          } else if (b.expiry_date) {
-            return 1;
-          } else if (a.manufacturing_date && b.manufacturing_date) {
-            return a.manufacturing_date - b.manufacturing_date;
-          } else if (a.manufacturing_date) {
-            return -1;
-          } else if (b.manufacturing_date) {
-            return 1;
-          } else {
-            return a.remaining_qty - b.remaining_qty;
-            //return b.remaining_qty - a.remaining_qty;
-          }
-        });
+      let batch_no_data;
+      if (this.invoice_doc.is_return) { // in case of returns, also pass the batches with qty '0'
+        console.log("(if) this.invoice_doc.is_return: ", this.invoice_doc.is_return);
+        batch_no_data = Object.values(used_batches)
+          //.filter((batch) => batch.remaining_qty > 0)
+          .sort((a, b) => {
+            if (a.expiry_date && b.expiry_date) {
+              return a.expiry_date - b.expiry_date;
+            } else if (a.expiry_date) {
+              return -1;
+            } else if (b.expiry_date) {
+              return 1;
+            } else if (a.manufacturing_date && b.manufacturing_date) {
+              return a.manufacturing_date - b.manufacturing_date;
+            } else if (a.manufacturing_date) {
+              return -1;
+            } else if (b.manufacturing_date) {
+              return 1;
+            } else {
+              return a.remaining_qty - b.remaining_qty;
+              //return b.remaining_qty - a.remaining_qty;
+            }
+          });
+      }
+      else {
+        console.log("(Else) this.invoice_doc.is_return: ", this.invoice_doc.is_return);
+        batch_no_data = Object.values(used_batches)
+          .filter((batch) => batch.remaining_qty > 0)
+          .sort((a, b) => {
+            if (a.expiry_date && b.expiry_date) {
+              return a.expiry_date - b.expiry_date;
+            } else if (a.expiry_date) {
+              return -1;
+            } else if (b.expiry_date) {
+              return 1;
+            } else if (a.manufacturing_date && b.manufacturing_date) {
+              return a.manufacturing_date - b.manufacturing_date;
+            } else if (a.manufacturing_date) {
+              return -1;
+            } else if (b.manufacturing_date) {
+              return 1;
+            } else {
+              return a.remaining_qty - b.remaining_qty;
+              //return b.remaining_qty - a.remaining_qty;
+            }
+          });
+      }
       if (batch_no_data.length > 0) {
         let batch_to_use = null;
         if (value) {
