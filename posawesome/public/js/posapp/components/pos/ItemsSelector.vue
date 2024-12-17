@@ -236,7 +236,7 @@ export default {
     show_coupons() {
       evntBus.$emit("show_coupons", "true");
     },
-    get_items() {
+    get_items(search_qty = false) {
       if (!this.pos_profile) {
         console.error("No POS Profile");
         return;
@@ -290,8 +290,10 @@ export default {
                 console.error(e);
               }
             }
-            if (vm.pos_profile.pose_use_limit_search) {
-              vm.enter_event();
+            if (vm.pos_profile.pose_use_limit_search && search_qty) {
+              //vm.enter_event();
+              console.log("search = ", search_qty);
+              vm.enter_qty()
             }
           }
         },
@@ -456,7 +458,8 @@ export default {
     search_onchange() {
       const vm = this;
       if (vm.pos_profile.pose_use_limit_search) {
-        vm.get_items();
+        //const search_qty = true;
+        vm.get_items(true);
       } else {
         //vm.enter_event();
         vm.enter_qty();
