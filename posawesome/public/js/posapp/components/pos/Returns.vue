@@ -33,18 +33,6 @@
                 @keydown.enter="search_invoices"
               ></v-text-field>
             </v-col>
-            <v-col cols="3">
-              <v-text-field
-                color="primary"
-                :label="frappe._('Full FS Account No.*')"
-                background-color="white"
-                hide-details
-                v-model="custom_fs_account_number"
-                dense
-                clearable
-                @keydown.enter="search_invoices"
-              ></v-text-field>
-            </v-col>
             <v-col cols="2">
               <v-text-field
                 color="secondary"
@@ -125,7 +113,6 @@ export default {
     company: '',
     invoice_name: '',
     customer_name: '', // for return search
-    custom_fs_account_number: '', // for return search
     item_code: '', // for return search
     headers: [
       {
@@ -171,7 +158,6 @@ export default {
         args: {
           invoice_name: vm.invoice_name,
           customer_name: vm.customer_name,
-          custom_fs_account_number: vm.custom_fs_account_number,
           item_code: vm.item_code,
           company: vm.company,
         },
@@ -219,7 +205,6 @@ export default {
       this.company = data;
       this.invoice_name = '';
       this.customer_name = '';
-      this.custom_fs_account_number = '';
       this.item_code = '';
       this.dialog_data = '';
       this.selected = [];

@@ -38,57 +38,18 @@
           </v-btn>
         </v-col>
         <v-col
-          v-if="pos_profile.posa_allow_sales_order && pos_profile.posa_enable_fs_payments"
-          cols="6"
-          class="pb-2 pr-0"
-        >
-          <Customer></Customer>
-        </v-col>
-        <v-col
-          v-if="pos_profile.posa_allow_sales_order && !pos_profile.posa_enable_fs_payments"
+          v-if="pos_profile.posa_allow_sales_order"
           cols="8"
           class="pb-2 pr-0"
         >
           <Customer></Customer>
         </v-col>
         <v-col
-          v-if="!pos_profile.posa_allow_sales_order && pos_profile.posa_enable_fs_payments"
-          cols="9"
-          class="pb-2"
-        >
-          <Customer></Customer>
-        </v-col>
-
-        <v-col
-          v-if="!pos_profile.posa_allow_sales_order && !pos_profile.posa_enable_fs_payments"
+          v-if="!pos_profile.posa_allow_sales_order"
           cols="11"
           class="pb-2"
         >
           <Customer></Customer>
-        </v-col>
-        <v-col
-          v-if="pos_profile.posa_enable_fs_payments"
-          cols="1"
-          align="left"
-        >
-          <v-btn
-            text icon :color="dynamic_fs_balance_color"
-            @click="fs_offline_switch"
-          >
-            FS<v-icon>{{ dynamic_fs_balance_icon }}</v-icon>
-          </v-btn>
-        </v-col>
-        <v-col
-          v-if="pos_profile.posa_enable_fs_payments"
-          cols="1"
-          align="left"
-        >
-          <v-btn
-            text icon :color="dynamic_pending_icon_color"
-            @click="open_pending_fs_bills"
-          >
-          {{ pending_fs_bills }}<v-icon>mdi-account-clock-outline</v-icon>
-          </v-btn>
         </v-col>
         <v-col v-if="pos_profile.posa_allow_sales_order" cols="3" class="pb-2">
           <v-select
@@ -604,67 +565,6 @@
                   </v-col>
 
                   <v-col
-                    cols="3"
-                    v-show="display_pending_bill_details"
-                  >
-                    <v-text-field
-                      dense
-                      outlined
-                      color="primary"
-                      :label="frappe._('Invoice Name')"
-                      background-color="white"
-                      hide-details
-                      v-model="invoice_doc.name"
-                      disabled
-                    ></v-text-field>
-                  </v-col>
-                  <v-col
-                    cols="3"
-                    v-show="display_pending_bill_details"
-                  >
-                    <v-text-field
-                      dense
-                      outlined
-                      color="primary"
-                      :label="frappe._('Invoice Status')"
-                      background-color="white"
-                      hide-details
-                      v-model="invoice_doc.status"
-                      disabled
-                    ></v-text-field>
-                  </v-col>
-                  <v-col
-                    cols="3"
-                    v-show="display_pending_bill_details"
-                  >
-                    <v-text-field
-                      dense
-                      outlined
-                      color="primary"
-                      :label="frappe._('Doc Status')"
-                      background-color="white"
-                      hide-details
-                      v-model="invoice_doc.docstatus"
-                      disabled
-                    ></v-text-field>
-                  </v-col>
-                  <v-col
-                    cols="3"
-                    v-show="display_pending_bill_details"
-                  >
-                    <v-text-field
-                      dense
-                      outlined
-                      color="primary"
-                      :label="frappe._('FS Transfer Status')"
-                      background-color="white"
-                      hide-details
-                      v-model="invoice_doc.custom_fs_transfer_status"
-                      disabled
-                    ></v-text-field>
-                  </v-col>
-
-                  <v-col
                     cols="4"
                     v-if="
                       pos_profile.posa_allow_sales_order &&
@@ -749,238 +649,7 @@
         </template>
       </div>
     </v-card>
-    <v-card v-if="pos_profile.posa_enable_fs_payments"
-      class="cards mb-0 mt-3 py-0 grey lighten-5">
-      <v-row no-gutters>
-        <v-col cols="5">
-          <v-row no-gutters class="pa-1 pt-9 pr-1">
-            <v-col cols="6" class="pa-1">
-              <v-text-field
-                :value="formtFloat(total_qty)"
-                :label="frappe._('Total Qty')"
-                outlined
-                dense
-                readonly
-                hide-details
-                color="accent"
-              ></v-text-field>
-            </v-col>
-            <v-col
-              v-if="!pos_profile.posa_use_percentage_discount"
-              cols="6"
-              class="pa-1"
-            >
-              <v-text-field
-                :value="formtCurrency(discount_amount)"
-                @change="
-                  setFormatedCurrency(
-                    discount_amount,
-                    'discount_amount',
-                    null,
-                    false,
-                    $event
-                  )
-                "
-                :rules="[isNumber]"
-                :label="frappe._('Additional Discount')"
-                ref="discount"
-                outlined
-                dense
-                hide-details
-                color="warning"
-                :prefix="currencySymbol(pos_profile.currency)"
-                :disabled="
-                  !pos_profile.posa_allow_user_to_edit_additional_discount ||
-                  discount_percentage_offer_name
-                    ? true
-                    : false
-                "
-              ></v-text-field>
-            </v-col>
-            <v-col
-              v-if="pos_profile.posa_use_percentage_discount"
-              cols="6"
-              class="pa-1"
-            >
-              <v-text-field
-                :value="formtFloat(additional_discount_percentage)"
-                @change="
-                  [
-                    setFormatedFloat(
-                      additional_discount_percentage,
-                      'additional_discount_percentage',
-                      null,
-                      false,
-                      $event
-                    ),
-                    update_discount_umount(),
-                  ]
-                "
-                :rules="[isNumber]"
-                :label="frappe._('Additional Discount %')"
-                suffix="%"
-                ref="percentage_discount"
-                outlined
-                dense
-                color="warning"
-                hide-details
-                :disabled="
-                  !pos_profile.posa_allow_user_to_edit_additional_discount ||
-                  discount_percentage_offer_name
-                    ? true
-                    : false
-                "
-              ></v-text-field>
-            </v-col>
-            <v-col cols="6" class="pa-1 mt-2">
-              <v-text-field
-                :value="formtCurrency(total_items_discount_amount)"
-                :prefix="currencySymbol(pos_profile.currency)"
-                :label="frappe._('Items Discounts')"
-                outlined
-                dense
-                color="warning"
-                readonly
-                hide-details
-              ></v-text-field>
-            </v-col>
-
-            <v-col cols="6" class="pa-1 mt-2">
-              <v-text-field
-                :value="formtCurrency(subtotal)"
-                :prefix="currencySymbol(pos_profile.currency)"
-                :label="frappe._('Total')"
-                outlined
-                dense
-                readonly
-                hide-details
-                color="success"
-              ></v-text-field>
-              <!--v-text-field
-                :value="formtCurrency_amount(subtotal)"
-                :prefix="currencySymbol(pos_profile.currency)"
-                :label="frappe._('Total')"
-                outlined
-                dense
-                readonly
-                hide-details
-                color="success"
-              ></v-text-field-->
-            </v-col>
-          </v-row>
-        </v-col>
-        <v-col cols="7">
-          <v-row no-gutters class="pa-1 pt-2 pl-0">
-            <v-col cols="6" class="pa-1">
-              <v-btn
-                block
-                class="pa-0"
-                color="warning"
-                dark
-                @click="get_draft_invoices"
-                >{{ __("Held") }}</v-btn
-              >
-            </v-col>
-            <v-col
-              v-if="pos_profile.custom_allow_select_sales_order === 1"
-              cols="6"
-              class="pa-1"
-            >
-              <v-btn
-                block
-                class="pa-0"
-                color="info"
-                dark
-                @click="get_draft_orders"
-                >{{ __("Select S.O") }}</v-btn
-              >
-            </v-col>
-            <!-- <v-col cols="4" class="pa-1">
-              <v-btn
-                block
-                class="pa-0"
-                color="warning"
-                dark
-                @click="open_offlineBill_drafts"
-                >{{ __("Offline FS Bills") }}</v-btn
-              >
-            </v-col> -->
-            <v-col cols="6" class="pa-1">
-              <v-btn
-                block
-                class="pa-0"
-                :class="{ 'disable-events': !pos_profile.posa_allow_return }"
-                color="secondary"
-                dark
-                @click="open_returns"
-                >{{ __("Return") }}</v-btn
-              >
-            </v-col>
-            <!--putting the v-if statement below to avoid cancel of submitted invoices pulled via open_pending_fs_bills()-->
-            <v-col cols="6" class="pa-1" v-if="this.invoice_doc.docstatus != 1">
-              <v-btn
-                block
-                class="pa-0"
-                color="error"
-                dark
-                @click="cancel_dialog = true"
-                >{{ __("Cancel") }}</v-btn
-              >
-            </v-col>
-            <v-col cols="6" class="pa-1">
-              <v-btn
-                block
-                class="pa-0"
-                color="accent"
-                dark
-                @click="new_invoice"
-                >{{ __("Hold Bill") }}</v-btn
-              >
-            </v-col>
-
-            <v-col class="pa-1">
-              <v-btn
-                block
-                class="pa-0"
-                color="success"
-                @click="show_payment"
-                ref="checkout"
-                dark
-                >{{ __("PAY") }}</v-btn
-              >
-            </v-col>
-            <v-col
-              v-if="pos_profile.posa_allow_print_draft_invoices"
-              cols="6"
-              class="pa-1"
-            >
-              <v-btn
-                block
-                class="pa-0"
-                color="primary"
-                @click="print_draft_invoice"
-                dark
-                >{{ __("Print Draft") }}</v-btn
-              >
-            </v-col>
-            <!-- <v-col
-              cols="6"
-              class="pa-1"
-            >
-              <v-btn
-                block
-                class="pa-0"
-                color="primary"
-                @click="offline_fs_pay"
-                dark
-                >{{ __("Offline FS PAY") }}</v-btn
-              >
-            </v-col> -->
-          </v-row>
-        </v-col>
-      </v-row>
-    </v-card>
-    <v-card v-if="!pos_profile.posa_enable_fs_payments"
+    <v-card
       class="cards mb-0 mt-3 py-0 grey lighten-5">
       <v-row no-gutters>
         <v-col cols="7">
@@ -1213,14 +882,6 @@ export default {
       float_precision: 2,
       currency_precision: 2,
       rounding_method: "", // for pulling the 'rounding method' value from ERPNext
-      balance_available: null, // Customer FS Account balance
-      dynamic_fs_balance_color: 'grey',  // grey,error,success (availability of FS balance)
-      dynamic_fs_balance_icon: 'mdi-bank-off', // 'mdi-bank' (availability of FS balance)
-      dynamic_pending_icon_color: 'grey', // highlights pending offline bills
-      pending_fs_bills: 0,
-      fs_transfer_pending: false, // for 'Offline FS Pay'
-      fs_offline: false, // to manually switch off FS Balance checks
-      display_pending_bill_details: false, // toggles display of pending bill details
       new_line: false,
       delivery_charges: [],
       delivery_charges_rate: 0,
@@ -1287,116 +948,6 @@ export default {
   },
 
   methods: {
-    fs_offline_switch() {
-      this.fs_offline = !this.fs_offline;
-      if (this.fs_offline) {
-        evntBus.$emit('show_mesage', {
-          text: 'FS Offline',
-          color: 'warning',
-        });
-        this.reset_fs_variables(this.fs_offline);
-      }
-      else {
-        evntBus.$emit('show_mesage', {
-          text: 'FS Online',
-          color: 'success',
-        });
-        this.reset_fs_variables(this.fs_offline);
-      }
-      evntBus.$emit('fs_offline', this.fs_offline);
-    },
-    reset_fs_variables(fs_offline = false) {
-      this.balance_available = null;
-      console.log("Balance: ", this.balance_available);
-      if (fs_offline) {
-        console.log("fs_offline: ", fs_offline);
-        this.dynamic_fs_balance_color = 'warning';
-        this.dynamic_fs_balance_icon = 'mdi-bank-off';
-      }
-      else {
-        console.log("fs_offline: ", fs_offline);
-        this.reset_fs_balance_status();
-      }
-      this.reset_pending_fs_bills_status();
-    },
-    fs_balance_check(fs_acc_customer) {
-      const vm = this;
-      frappe.call({
-        method: 'payments.payment_gateways.doctype.fs_settings.fs_settings.get_account_max_amount',
-        args: {fs_acc_customer: fs_acc_customer},
-        callback: function (r) {
-          if (r.message) {
-            if (r.message['Result'] == 'OK') {
-              vm.balance_available = parseFloat(r.message['maxAmount']);
-              console.log('vm.balance_available: ', vm.balance_available);
-              if (vm.balance_available > 0) {
-                vm.dynamic_fs_balance_color = 'success';
-                vm.dynamic_fs_balance_icon = 'mdi-bank';
-                evntBus.$emit('balance_available', vm.balance_available); // sent to Payments.Vue
-              }
-              else if (vm.balance_available === 0) {
-                vm.dynamic_fs_balance_color = 'error';
-                vm.dynamic_fs_balance_icon = 'mdi-bank';
-                evntBus.$emit('show_mesage', {
-                  text: 'Insufficient Balance',
-                  color: 'warning',
-                });
-                evntBus.$emit('balance_available', vm.balance_available);
-              }
-              else {
-                evntBus.$emit('show_mesage', {
-                  text: 'Please verify the FS Account Number for this Customer',
-                  color: 'error',
-                });
-                vm.new_invoice(); // resets the flow
-              }
-            }
-            else {
-              evntBus.$emit('show_mesage', {
-                text: r.message['Result'],
-                color: 'error',
-              });
-              vm.dynamic_fs_balance_color = 'error';
-              vm.dynamic_fs_balance_icon = 'mdi-bank';
-              vm.new_invoice(); // resets the flow
-            }
-          }
-          else {
-            vm.dynamic_fs_balance_color = 'grey';
-            vm.dynamic_fs_balance_icon = 'mdi-bank-off';
-          }
-        }
-      })
-    },
-    reset_fs_balance_status() {
-      this.dynamic_fs_balance_color = 'grey';
-      this.dynamic_fs_balance_icon = 'mdi-bank-off';
-    },
-    pending_fs_bills_check(customer) {
-      const vm = this;
-      frappe.call({
-        method: 'posawesome.posawesome.api.posapp.pending_fs_bills_query',
-        args: {
-          customer: vm.customer,
-          company: vm.pos_profile.company
-        },
-        callback: (r) => {
-          if (r.message) {
-              if (r.message > 0) {
-              this.dynamic_pending_icon_color = 'warning';
-              this.pending_fs_bills = r.message;
-            }
-          }
-          else {
-            vm.dynamic_pending_icon_color = 'grey';
-          }
-        }
-      })
-    },
-    reset_pending_fs_bills_status() {
-      this.dynamic_pending_icon_color = 'grey';
-      this.pending_fs_bills = 0;
-    },
     remove_item(item) {
       const index = this.items.findIndex(
         (el) => el.posa_row_id == item.posa_row_id
@@ -1650,55 +1201,8 @@ export default {
       this.delivery_charges_rate = 0;
       this.selcted_delivery_charges = {};
       evntBus.$emit("set_customer_readonly", false);
-      this.reset_fs_balance_status();
-      this.reset_pending_fs_bills_status();
       evntBus.$emit('input_customer'); // pass event to Customer.vue
       this.cancel_dialog = false;
-    },
-
-    offline_fs_pay() {
-      if (this.fs_offline) {
-        this.offline_save();
-      }
-      else {
-        const vm = this;
-        frappe.call({
-          method: 'payments.payment_gateways.doctype.fs_settings.fs_settings.login',
-          callback: function (r) {
-            if (r.message !== 'OK')
-              vm.offline_save(); // FS is Offline
-            else {
-              evntBus.$emit('show_mesage', {
-                text: 'FS is Online, please press the Pay button instead',
-                color: 'error',
-              });
-            }
-          },
-        });
-      }
-    },
-
-    async offline_save() {
-      if (!this.customer) {
-        evntBus.$emit("show_mesage", {
-          text: __(`There is no Customer !`),
-          color: "error",
-        });
-        return;
-      }
-      if (!this.items.length) {
-        evntBus.$emit("show_mesage", {
-          text: __(`There are no Items !`),
-          color: "error",
-        });
-        return;
-      }
-      this.fs_transfer_pending = true;
-      let await_new_invoice = await this.new_invoice();
-      evntBus.$emit('show_mesage', {
-        text: 'Offline FS Invoice saved',
-        color: 'info',
-      });
     },
 
     new_invoice(data = {}) {
@@ -1716,7 +1220,6 @@ export default {
           frappe.throw("Rate cannot be zero for any item");
         }
       })
-      if (this.fs_transfer_pending) doc.custom_fs_transfer_status = "PENDING"; // for 'Offline FS Pay'
       if (doc.name) {
         old_invoice = this.update_invoice(doc);
       } else {
@@ -1728,18 +1231,12 @@ export default {
         this.items = [];
         this.customer = this.pos_profile.customer;
         this.invoice_doc = "";
-        this.fs_transfer_pending = false; // for 'Offline FS Pay'
         this.discount_amount = 0;
         this.additional_discount_percentage = 0;
         this.invoiceType = this.pos_profile.posa_default_sales_order
           ? "Order"
           : "Invoice";
         this.invoiceTypes = ["Invoice", "Order"];
-        if (!this.display_pending_bill_details) {
-          // need to retain these variables in case pending bill details are pulled.
-          this.reset_fs_balance_status();
-          this.reset_pending_fs_bills_status();
-        }
         evntBus.$emit('input_customer'); // pass event to Customer.vue
       } else {
         if (data.is_return) {
@@ -2288,26 +1785,6 @@ export default {
       });
     },
 
-    open_pending_fs_bills() {
-      this.display_pending_bill_details = true;
-      const vm = this;
-      if (this.pending_fs_bills > 0) {
-        frappe.call({
-          method: "posawesome.posawesome.api.posapp.open_pending_fs_bills",
-          args: {
-            customer: vm.customer,
-            company: vm.pos_profile.company
-          },
-          async: false,
-          callback: function (r) {
-            if (r.message) {
-              evntBus.$emit("open_drafts", r.message);
-            }
-          },
-        });
-      }
-    },
-
     get_draft_orders() {
       const vm = this;
       frappe.call({
@@ -2766,13 +2243,6 @@ export default {
       return value;
     },
     */
-
-    shortOfflinePay(e) {
-      if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        this.offline_fs_pay();
-      }
-    },
 
     shortOpenPayment(e) {
       if (e.key === "F2") {
@@ -3630,21 +3100,11 @@ export default {
     });
     evntBus.$on("update_customer", (customer) => {
       this.customer = customer;
-      if (customer && this.pos_profile.posa_enable_fs_payments) {
-        if (!this.fs_offline) {
-          this.fs_balance_check(customer);
-          this.pending_fs_bills_check(customer);
-        }
-      }
-    });
-    evntBus.$on("reset_fs_variables", () => {
-      this.reset_fs_variables();
     });
     evntBus.$on("fetch_customer_details", () => {
       this.fetch_customer_details();
     });
     evntBus.$on("new_invoice", () => {
-      this.reset_fs_variables();
       this.invoice_doc = "";
       this.cancel_invoice();
     });
@@ -3701,40 +3161,20 @@ export default {
     evntBus.$off("update_invoice_offers");
     evntBus.$off("update_invoice_coupons");
     evntBus.$off("set_all_items");
-    evntBus.$off("reset_fs_variables");
   },
   created() {
     document.addEventListener("keydown", this.shortOpenPayment.bind(this));
     document.addEventListener("keydown", this.shortDeleteFirstItem.bind(this));
     document.addEventListener("keydown", this.shortOpenFirstItem.bind(this));
     document.addEventListener("keydown", this.shortSelectDiscount.bind(this));
-    document.addEventListener("keydown", this.shortOfflinePay.bind(this));
   },
   destroyed() {
     document.removeEventListener("keydown", this.shortOpenPayment);
     document.removeEventListener("keydown", this.shortDeleteFirstItem);
     document.removeEventListener("keydown", this.shortOpenFirstItem);
     document.removeEventListener("keydown", this.shortSelectDiscount);
-    document.removeEventListener("keydown", this.shortOfflinePay);
   },
   watch: {
-    subtotal() {
-      // watch only when customer is set; exclude returns; exclude cases where balance_available is 'not yet set (null)' or is '-1'
-      if (this.customer && this.balance_available != null && this.balance_available >= 0 && this.subtotal >= 0) {
-        if (this.subtotal > this.balance_available) {
-          this.dynamic_fs_balance_color = 'error';
-          this.dynamic_fs_balance_icon = 'mdi-bank';
-          evntBus.$emit('show_mesage', {
-            text: 'Insufficient Balance',
-            color: 'warning',
-          });
-        }
-        else if (this.subtotal < this.balance_available || (this.subtotal == 0 && this.balance_available > 0)) {
-          this.dynamic_fs_balance_color = 'success';
-          this.dynamic_fs_balance_icon = 'mdi-bank';
-        }
-      }
-    },
     customer() {
       this.close_payments();
       evntBus.$emit("set_customer", this.customer);

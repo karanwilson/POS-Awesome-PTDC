@@ -21,21 +21,10 @@
                 <v-text-field
                   dense
                   color="primary"
-                  :label="frappe._('Customer Name / Aurocard No.') + ' *'"
+                  :label="frappe._('Customer Name') + ' *'"
                   background-color="white"
                   hide-details
                   v-model="customer_name"
-                ></v-text-field>
-              </v-col>
-              <!--for search with FS Account Numbers-->
-              <!-- <v-col cols="6">
-                <v-text-field
-                  dense
-                  color="primary"
-                  :label="frappe._('FS Account No.')"
-                  background-color="white"
-                  hide-details
-                  v-model="custom_fs_account_number"
                 ></v-text-field>
               </v-col>
               <v-col cols="6">
@@ -117,7 +106,7 @@
                   >
                   </v-date-picker>
                 </v-menu>
-              </v-col> -->
+              </v-col>
               <v-col cols="6">
                 <v-autocomplete
                   clearable
@@ -193,7 +182,6 @@ export default {
     pos_profile: '',
     customer_id: '',
     customer_name: '',
-    custom_fs_account_number: '', // for search with FS Account Numbers
     tax_id: '',
     mobile_no: '',
     email_id: '',
@@ -218,7 +206,6 @@ export default {
     },
     clear_customer() {
       this.customer_name = '';
-      this.custom_fs_account_number = ''; // for search with FS Account Numbers
       this.tax_id = '';
       this.mobile_no = '';
       this.email_id = '';
@@ -311,7 +298,6 @@ export default {
         const args = {
           customer_id: this.customer_id,
           customer_name: this.customer_name,
-          custom_fs_account_number: this.custom_fs_account_number, // for search with FS Account Numbers
           company: this.pos_profile.company,
           tax_id: this.tax_id,
           mobile_no: this.mobile_no,
@@ -363,7 +349,6 @@ export default {
       if (data) {
         this.customer_name = data.customer_name;
         this.customer_id = data.name;
-        this.custom_fs_account_number = data.custom_fs_account_number; // for search with FS Account Numbers
         this.tax_id = data.tax_id;
         this.mobile_no = data.mobile_no;
         this.email_id = data.email_id;

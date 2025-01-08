@@ -2,7 +2,6 @@
   <div fluid class="mt-2">
     <ClosingDialog></ClosingDialog>
     <Drafts></Drafts>
-    <OfflineBillDrafts></OfflineBillDrafts>
     <SalesOrders></SalesOrders>
     <Returns></Returns>
     <NewAddress></NewAddress>
@@ -77,7 +76,6 @@ import NewAddress from './NewAddress.vue';
 import Variants from './Variants.vue';
 import Returns from './Returns.vue';
 import MpesaPayments from './Mpesa-Payments.vue';
-import OfflineBillDrafts from './OfflineBillDrafts.vue';
 
 export default {
   data: function () {
@@ -97,7 +95,6 @@ export default {
     OpeningDialog,
     Payments,
     Drafts,
-    OfflineBillDrafts,
     ClosingDialog,
 
     Returns,

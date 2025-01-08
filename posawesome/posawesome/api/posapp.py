@@ -11,8 +11,7 @@ from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_a
 from erpnext.stock.get_item_details import get_item_details
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_item_groups
 from frappe.utils.background_jobs import enqueue
-from erpnext.accounts.party import get_party_bank_account, get_party_account # added for open_pending_fs_bills
-from erpnext.accounts.utils import get_outstanding_invoices # added for open_pending_fs_bills
+from erpnext.accounts.party import get_party_bank_account
 from erpnext.stock.doctype.batch.batch import (
     get_batch_no,
     get_batch_qty,
@@ -432,11 +431,9 @@ def get_customer_names(pos_profile):
         pos_profile = json.loads(pos_profile)
         condition = ""
         condition += get_customer_group_condition(pos_profile)
-        # Added custom_fs_account_number in the DB fetch, to be able to filter/search based on FS Account Numbers
-        # custom_fs_account_number is a custom field added via fixtures from ptdc_av app
         customers = frappe.db.sql(
             """
-            SELECT name, mobile_no, email_id, tax_id, customer_name, primary_address, custom_fs_account_number
+            SELECT name, mobile_no, email_id, tax_id, customer_name, primary_address
             FROM `tabCustomer`
             WHERE {0}
             ORDER by name
@@ -935,7 +932,7 @@ def get_available_credit(customer, company):
 
 @frappe.whitelist()
 def get_draft_invoices(pos_opening_shift):
-    """
+    
     invoices_list = frappe.get_list(
         "Sales Invoice",
         filters={
@@ -947,69 +944,10 @@ def get_draft_invoices(pos_opening_shift):
         limit_page_length=0,
         order_by="modified desc",
     )
-    """
-    # using db.sql as get_list does not work for filter condition: custom_fs_transfer_status: "NULL" or None
-    # exluding FS draft invoices with "custom_fs_transfer_status IS NULL"
-    invoices_list = frappe.db.sql(
-        """
-        SELECT name
-        FROM `tabSales Invoice`
-        WHERE posa_pos_opening_shift = %s AND docstatus = 0 AND posa_is_printed = 0 AND custom_fs_transfer_status IS NULL
-        ORDER BY modified desc
-	    """,
-	pos_opening_shift,
-    as_dict=1,
-    )
+   
     data = []
     for invoice in invoices_list:
         data.append(frappe.get_cached_doc("Sales Invoice", invoice["name"]))
-    return data
-
-
-@frappe.whitelist()
-def get_customer_fs_acc_number(customer):
-    return frappe.get_value("Customer", customer, "custom_fs_account_number")
-
-
-@frappe.whitelist()
-def pending_fs_bills_query(customer, company):
-    #customer_name = frappe.get_value("Customer", customer, "customer_name")
-    outstanding_invoices = get_outstanding_invoices(
-        party_type="Customer",
-        party=customer,
-        account=get_party_account("Customer", customer, company),
-    )
-    return len(outstanding_invoices)
-
-
-@frappe.whitelist()
-def open_pending_fs_bills(customer, company):
-    #customer_name = frappe.get_value("Customer", customer, "customer_name")
-    outstanding_invoices = get_outstanding_invoices(
-        party_type="Customer",
-        party=customer,
-        account=get_party_account("Customer", customer, company),
-    )
-    #values = {
-    #    "customer": customer,
-    #    "company": company
-    #}
-    #invoices_list = frappe.db.sql(
-    #   """
-    #    SELECT name
-    #    FROM `tabSales Invoice`
-    #    WHERE customer = %(customer)s AND company = %(company)s
-    #    AND NOT status = "Paid" AND NOT status = "Return" AND NOT status = "Credit Note Issued"
-    #    ORDER BY modified desc
-	#    """,
-    #    values=values,
-    #    as_dict=1,
-    #)
-    data = []
-    #for invoice in invoices_list:
-    #    data.append(frappe.get_cached_doc("Sales Invoice", invoice["name"]))
-    for invoice in outstanding_invoices:
-        data.append(frappe.get_cached_doc(invoice.get("voucher_type"), invoice.get("voucher_no")))
     return data
 
 
@@ -1167,13 +1105,10 @@ def get_stock_availability(item_code, warehouse):
     return actual_qty
 
 
-# Added custom_fs_account_number to be able to filter/search Customers based on FS Account Numbers
-# custom_fs_account_number is a custom field added via fixtures from ptdc_av app
 @frappe.whitelist()
 def create_customer(
     customer_id,
     customer_name,
-    custom_fs_account_number,
     company,
     pos_profile_doc,
     tax_id=None,
@@ -1195,7 +1130,6 @@ def create_customer(
                 {
                     "doctype": "Customer",
                     "customer_name": customer_name,
-                    "custom_fs_account_number": custom_fs_account_number,
                     "posa_referral_company": company,
                     "tax_id": tax_id,
                     "mobile_no": mobile_no,
@@ -1222,7 +1156,6 @@ def create_customer(
     elif method == "update":
         customer_doc = frappe.get_doc("Customer", customer_id)
         customer_doc.customer_name = customer_name
-        customer_doc.custom_fs_account_number = custom_fs_account_number
         customer_doc.posa_referral_company = company
         customer_doc.tax_id = tax_id
         customer_doc.posa_referral_code = referral_code
@@ -1348,77 +1281,7 @@ def set_customer_info(customer, fieldname, value=""):
 
 
 @frappe.whitelist()
-def get_fs_offline_invoices(invoice_name, customer_name, custom_fs_account_number, company):
-    values = {
-        "invoice_name": invoice_name,
-        "customer_name": customer_name,
-        "custom_fs_account_number": custom_fs_account_number,
-        "company": company
-    }
-
-    if invoice_name:
-        values["invoice_name"] = "%"+invoice_name+"%" # for matching with partial Invoice IDs
-        invoices_list = frappe.db.sql(
-            """
-            SELECT name
-            FROM `tabSales Invoice`
-            WHERE name LIKE %(invoice_name)s AND company = %(company)s
-            AND docstatus = 0 AND custom_fs_transfer_status IS NOT NULL
-            ORDER BY modified desc
-            """,
-            values=values,
-            as_dict=1,
-        )
-
-    elif custom_fs_account_number:
-        customer = frappe.get_all("Customer", 
-            filters={"custom_fs_account_number": custom_fs_account_number},
-            fields=["name"]
-        )
-
-        if customer:
-            values["customer"] = customer[0]["name"]
-            invoices_list = frappe.db.sql(
-                """
-                SELECT name
-                FROM `tabSales Invoice`
-                WHERE customer = %(customer)s AND company = %(company)s
-                AND docstatus = 0 AND custom_fs_transfer_status IS NOT NULL
-                ORDER BY modified desc
-	            """,
-                values=values,
-                as_dict=1,
-            )
-        else:
-            msg = "FS Account not found"
-            return msg
-
-    elif customer_name:
-        values["customer_name"] = "%"+customer_name+"%" # for matching with partial Customer Names
-        invoices_list = frappe.db.sql(
-            """
-            SELECT name
-            FROM `tabSales Invoice`
-            WHERE customer LIKE %(customer_name)s AND company = %(company)s
-            AND docstatus = 0 AND custom_fs_transfer_status IS NOT NULL
-            ORDER BY modified desc
-	        """,
-            values=values,
-            as_dict=1,
-        )
-
-    else:
-        msg = "At least one of 'Invoice ID, 'Customer Name' or 'FS Account' is needed for this search"
-        return msg    
-
-    data = []
-    for invoice in invoices_list:
-        data.append(frappe.get_doc("Sales Invoice", invoice["name"]))
-    return data
-
-
-@frappe.whitelist()
-def search_invoices_for_return(invoice_name, customer_name, custom_fs_account_number, item_code, company):
+def search_invoices_for_return(invoice_name, customer_name, item_code, company):
 
     if invoice_name:
         invoices_list = frappe.get_all(
@@ -1433,30 +1296,6 @@ def search_invoices_for_return(invoice_name, customer_name, custom_fs_account_nu
             limit_page_length=0,
             order_by="posting_date desc",    # sort by posting_date, latest first..
         )
-
-    elif custom_fs_account_number:
-        customer = frappe.get_all("Customer", 
-            #filters={"custom_fs_account_number": ["like", f"%{custom_fs_account_number}%"]},
-            filters={"custom_fs_account_number": custom_fs_account_number},
-            fields=["name"]
-        )
-
-        if customer:
-            invoices_list = frappe.get_all(
-                "Sales Invoice",
-                filters={
-                    "customer": customer[0]["name"],
-                    "company": company,
-                    "docstatus": 1,
-                    "is_return": 0,
-                },
-                fields=["name"],
-                limit_page_length=0,
-                order_by="posting_date desc",    # sort by posting_date, latest first..
-            )
-        else:
-            msg = "FS Account not found"
-            return msg
 
     elif customer_name:
         invoices_list = frappe.get_all(
@@ -1473,7 +1312,7 @@ def search_invoices_for_return(invoice_name, customer_name, custom_fs_account_nu
         )
 
     else:
-        msg = "At least one of 'Invoice ID, 'Customer Name' or 'FS Account' is needed for this search"
+        msg = "At least one of 'Invoice ID, 'Customer Name' is needed for this search"
         return msg
 
     data = []
@@ -1975,15 +1814,12 @@ def get_active_gift_coupons(customer, company):
     return coupons
 
 
-# Added custom_fs_account_number to be able to filter/search Customers based on FS Account Numbers
-# custom_fs_account_number is a custom field added via fixtures from ptdc_av app
 @frappe.whitelist()
 def get_customer_info(customer):
     customer = frappe.get_doc("Customer", customer)
 
     res = {"loyalty_points": None, "conversion_factor": None}
 
-    res["custom_fs_account_number"] = customer.custom_fs_account_number
     res["email_id"] = customer.email_id
     res["mobile_no"] = customer.mobile_no
     res["image"] = customer.image

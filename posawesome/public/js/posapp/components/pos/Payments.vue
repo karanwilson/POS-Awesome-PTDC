@@ -231,17 +231,6 @@
         <v-row 
           class="px-1 py-0"
         >
-          <v-col cols="7" v-show="aurocard">
-            <v-text-field
-              dense
-              outlined
-              color="primary"
-              :label="frappe._('Aurocard Transaction ID')"
-              background-color="white"
-              hide-details
-              v-model="aurocard_trans_id"
-            ></v-text-field>
-          </v-col>
           <v-col cols="7" v-show="upi">
             <v-text-field
               dense
@@ -841,13 +830,9 @@ export default {
     // customer_outstanding_amount: 0, // commented this custom variable, because it is now redundant (check comments in the related function below)
     float_precision: frappe.defaults.get_default('float_precision'),
     payment: false, // to ensure that the shortcut key "F3" is not allowed unless the evntBus ("show_payment", "true") has been triggered
-    aurocard: false, // toggles display of Aurocard details
     upi: false, // toggles display of UPI details
-    aurocard_trans_id: "",
     upi_trans_id: "",
     remarks: false, // shows on the returns screen
-    balance_available: null, // Customer FS Account balance
-    fs_offline: false, // for offline credit billing
     customer_credit_dict: [],
     phone_dialog: false,
     invoiceType: "Invoice",
@@ -860,7 +845,6 @@ export default {
     back_to_invoice() {
       evntBus.$emit("show_payment", "false");
       evntBus.$emit("set_customer_readonly", false);
-      this.aurocard_trans_id = "";
       this.upi_trans_id = "";
     },
     async submit(event, payment_received = false, print = false) {
@@ -974,29 +958,12 @@ export default {
         return;
       }
 
-      if (this.invoice_doc.is_return) {
-        const verify_invoice_status = await this.verify_invoice_status();
-        console.log("verify_invoice_status: ", verify_invoice_status);
-      }
-
       for (payment of this.invoice_doc.payments) {
         console.log("Mode of Payment: ", payment.mode_of_payment);
         if (payment.amount !== 0) { // if < 0 then it is a return transaction
           payment.amount = flt(payment.amount, this.currency_precision);
           console.log("payment.amount", payment.amount);
-          if (payment.mode_of_payment === "FS") {
-            const verify_fs_payment = await this.verify_fs_payment();
-            console.log("verify_fs_payment: ", verify_fs_payment);
-            const fs_payment_response = await this.make_fs_payment(payment.amount);
-            console.log("fs_payment_response: ", fs_payment_response);
-            break;
-          }
-          else if (payment.mode_of_payment === "Aurocard") {
-            const aurocard_payment_response = await this.make_aurocard_payment();
-            console.log("aurocard_payment_response: ", aurocard_payment_response);
-            break;
-          }
-          else if (payment.mode_of_payment === "UPI") {
+          if (payment.mode_of_payment === "UPI") {
             const upi_payment_response = await this.make_upi_payment();
             console.log("upi_payment_response: ", upi_payment_response);
             break;
@@ -1017,9 +984,7 @@ export default {
       this.is_cashback = true;
       this.sales_person = "";
 
-      this.balance_available = null;
-      //evntBus.$emit('reset_fs_variables'); // pass event to Invoice.vue
-      evntBus.$emit("new_invoice", "false"); // clubbed reset_fs_variables with new_invoice evnt.$on in Invoice.vue
+      evntBus.$emit("new_invoice", "false");
       this.back_to_invoice();
     },
 
@@ -1085,17 +1050,9 @@ export default {
         }
         else payment.amount = 0;
       });
-      if (mop == 'Aurocard')
-        {
-          this.aurocard = true;
-          this.upi = false;
-        }
-      else if (mop == 'UPI')
-        {
-          this.upi = true;
-          this.aurocard = false;
-        }
-      else this.aurocard = this.upi = false;
+      if (mop == 'UPI')
+        this.upi = true;
+      else this.upi = false;
       this.redeem_customer_credit = false;
     },
     set_rest_amount(idx) {
@@ -1348,126 +1305,6 @@ export default {
         razorpay.on_success = (response) => { resolve(response); };
         //razorpay.on_fail = (response) => { resolve(response); };
         razorpay.init();
-      })
-    },
-
-    verify_invoice_status() {
-      return new Promise((resolve, reject) => {
-        frappe.db
-          .get_value("Sales Invoice", this.invoice_doc.return_against, "custom_fs_transfer_status")
-          .then(( { message } ) => {
-            if (message.custom_fs_transfer_status == "Insufficient Funds") {
-              evntBus.$emit("show_mesage", {
-                text: "For returns with Insufficient-Funds/Unpaid Invoices: please 'cancel-amend(edit)-save-submit' using the 'Sales Invoice' form",
-                color: "error",
-              });
-              reject("Return: Insufficient Funds");
-            }
-            else resolve("OK - Invoice Paid");
-          })
-      })
-    },
-
-    verify_fs_payment() {
-      return new Promise((resolve, reject) => {
-        console.log("balance_available: ", this.balance_available);
-        console.log("fs_offline: ", this.fs_offline);
-        if (!this.fs_offline && !this.balance_available && this.balance_available !== 0) {
-          evntBus.$emit('show_mesage', {
-            text: "FS Account Balance not set, try billing Offline",
-            color: "error",
-          });
-          reject("FS Account Balance not set, try billing Offline");
-        }
-
-        const vm = this;
-        frappe.call({
-          method: 'posawesome.posawesome.api.posapp.get_customer_fs_acc_number',
-          args: {customer: vm.invoice_doc.customer},
-          async: false,
-          callback: function (r) {
-            if (r.message) {
-              vm.invoice_doc.custom_fs_account_number = r.message; // update customer FS Acc Number
-              console.log("Customer FS Account Number: ", r.message);
-              resolve("OK");
-            }
-            else {
-              evntBus.$emit('show_mesage', {
-                text: "FS Account not set",
-                color: "error",
-              });
-              reject("FS Account not set");
-            }
-          }
-        })
-      })
-    },
-
-    make_fs_payment(fs_amount) {
-      return new Promise((resolve, reject) => {
-        const vm = this;
-        if (this.fs_offline) {
-          vm.is_credit_sale = 1;
-          vm.invoice_doc.custom_fs_transfer_status = "Pending";
-          resolve("OK - Offline");
-        }
-        else {
-          frappe.call({
-            method: 'payments.payment_gateways.doctype.fs_settings.fs_settings.add_transfer_billing',
-            args: {
-              invoice_doc: vm.invoice_doc,
-              fAmount: fs_amount,
-              fs_acc_balance: vm.balance_available
-            },
-            async: false,
-            callback: function (r) {
-              if (r.message) {
-                vm.invoice_doc.custom_fs_transfer_status = r.message["custom_fs_transfer_status"];
-                if (vm.invoice_doc.is_return && vm.remarks)
-                  vm.invoice_doc.remarks += "\n" + r.message["remarks"]; // in case of return-remarks
-                else if (r.message["remarks"] != "Null") // In case of "Insufficient Funds"
-                  vm.invoice_doc.remarks = r.message["remarks"];
-
-                if (r.message["custom_fs_transfer_status"] == "OK") {
-                  resolve("OK");
-                }
-                else if (r.message["custom_fs_transfer_status"] == "Insufficient Funds") {
-                  vm.is_credit_sale = 1;
-                  vm.invoice_doc.custom_fs_transfer_status = "Insufficient Funds";
-                  //vm.invoice_doc.outstanding_amount = fs_amount;
-                  //vm.invoice_doc.due_date = frappe.datetime.month_end(); // setting the due_date for is_credit_sale (if set) to last day of the month
-                  resolve("Insufficient Funds");
-                }
-                else {
-                  evntBus.$emit('show_mesage', {
-                    text: r.message['custom_fs_transfer_status'],
-                    color: "error",
-                  });
-                  reject(r.message["custom_fs_transfer_status"]);
-                }
-              }
-            },
-          });
-        }
-      })
-    },
-
-    make_aurocard_payment() {
-      return new Promise((resolve, reject) => {
-        if (this.aurocard_trans_id) {
-          if (this.invoice_doc.is_return && this.remarks)
-            this.invoice_doc.remarks += "\n" + "Aurocard Transaction ID: " + this.aurocard_trans_id;
-          else
-            this.invoice_doc.remarks = "Aurocard Transaction ID: " + this.aurocard_trans_id;
-          resolve("OK");
-        }
-        else {
-          evntBus.$emit("show_mesage", {
-            text: "For Aurocard Payments, please enter both 'Aurocard Number' and 'Aurocard Transaction ID'",
-            color: "warning",
-          });
-          reject("For Aurocard Payments, please enter both 'Aurocard Number' and 'Aurocard Transaction ID'");
-        }
       })
     },
 
@@ -1748,7 +1585,6 @@ export default {
           }); */
         }
 
-        this.aurocard = false; // toggle for display of Aurocard details
         this.upi = false; // toggle for display of UPI details
 
         if (this.invoice_doc.custom_transaction_date)
@@ -1759,15 +1595,8 @@ export default {
           this.staff_member = true;
         else this.staff_member = false;
 
-        // In case of PTDC (with FS payments disabled), is_cashback is disabled in order to create credit-notes
-        if (!this.pos_profile.posa_enable_fs_payments && this.invoice_doc.is_return)
-          this.is_cashback = false;
-
         this.loyalty_amount = 0;
-        if (!this.pos_profile.posa_enable_fs_payments)
-          this.get_available_credit(1); // pre-loads customer credit in payments screen
-        else this.redeem_customer_credit = false; // resets to false incase it was switched-on before pressing 'cancel payment'
-        //this.set_last_day_of_Month(); // setting the due_date for is_credit_sale (if set) to last day of the month
+        this.get_available_credit(1); // pre-loads customer credit in payments screen
         this.invoice_doc.due_date = frappe.datetime.month_end(); // setting the due_date for is_credit_sale (if set) to last day of the month
         this.get_addresses();
         this.get_sales_person_names();
@@ -1775,12 +1604,6 @@ export default {
       evntBus.$on("show_payment", (data) => {
         this.payment = true ? data === 'true' : false;
       });
-      evntBus.$on("balance_available", (data) => {
-        this.balance_available = data;
-      });
-      evntBus.$on('fs_offline', (data) => {
-        this.fs_offline = data;
-      }),
       evntBus.$on("register_pos_profile", (data) => {
         this.pos_profile = data.pos_profile;
         this.get_mpesa_modes();
@@ -1831,9 +1654,6 @@ export default {
     evntBus.$off("set_customer_info_to_edit");
     evntBus.$off("update_invoice_coupons");
     evntBus.$off("set_mpesa_payment");
-    evntBus.$off("balance_available");
-    evntBus.$off('fs_offline');
-    //evntBus.$off("reset_fs_variables");
   },
 
   destroyed() {
