@@ -761,7 +761,7 @@
         </v-col>
         <v-col cols="5">
           <v-row no-gutters class="pa-1 pt-2 pl-0">
-            <v-col cols="6" class="pa-1">
+            <v-col cols="4" class="pa-1">
               <v-btn
                 block
                 class="pa-0"
@@ -773,7 +773,7 @@
             </v-col>
             <v-col
               v-if="pos_profile.custom_allow_select_sales_order === 1"
-              cols="6"
+              cols="4"
               class="pa-1"
             >
               <v-btn
@@ -783,6 +783,20 @@
                 dark
                 @click="get_draft_orders"
                 >{{ __("Select S.O") }}</v-btn
+              >
+            </v-col>
+            <v-col
+              v-if="pos_profile.posa_allow_print_draft_invoices"
+              cols="4"
+              class="pa-1"
+            >
+              <v-btn
+                block
+                class="pa-0"
+                color="primary"
+                @click="print_draft_invoice"
+                dark
+                >{{ __("Print Draft") }}</v-btn
               >
             </v-col>
             <v-col cols="6" class="pa-1">
@@ -825,20 +839,6 @@
                 ref="checkout"
                 dark
                 >{{ __("PAY") }}</v-btn
-              >
-            </v-col>
-            <v-col
-              v-if="pos_profile.posa_allow_print_draft_invoices"
-              cols="6"
-              class="pa-1"
-            >
-              <v-btn
-                block
-                class="pa-0"
-                color="primary"
-                @click="print_draft_invoice"
-                dark
-                >{{ __("Print Draft") }}</v-btn
               >
             </v-col>
           </v-row>
