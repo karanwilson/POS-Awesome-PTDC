@@ -61,7 +61,6 @@ class POSClosingShift(Document):
         opening_entry.save()
 
     def delete_draft_invoices(self):
-        # added "and custom_fs_transfer_status IS NULL" in the SQL statement below, to prevent deletion of FS draft invoices
         if frappe.get_value("POS Profile", self.pos_profile, "posa_allow_delete"):
             data = frappe.db.sql(
                 """
@@ -70,7 +69,7 @@ class POSClosingShift(Document):
                 from
                     `tabSales Invoice`
                 where
-                    docstatus = 0 and posa_is_printed = 0 and posa_pos_opening_shift = %s and custom_fs_transfer_status IS NULL
+                    docstatus = 0 and posa_is_printed = 0 and posa_pos_opening_shift = %s
                 """,
                 (self.pos_opening_shift),
                 as_dict=1,

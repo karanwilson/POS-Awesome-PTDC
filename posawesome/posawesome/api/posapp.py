@@ -33,9 +33,9 @@ from posawesome.posawesome.doctype.delivery_charges.delivery_charges import (
 from frappe.utils.caching import redis_cache
 
 
-@frappe.whitelist()
+""" @frappe.whitelist()
 def pourtous_settings():
-    return frappe.get_doc("Pour Tous Settings")
+    return frappe.get_doc("Pour Tous Settings") """
 
 
 @frappe.whitelist()
